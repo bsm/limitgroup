@@ -14,9 +14,10 @@ import (
 
 var _ = Describe("Group", func() {
 	var subject *limitgroup.Group
+	var ctx context.Context
 
 	BeforeEach(func() {
-		subject = limitgroup.New(context.Background(), 2)
+		subject, ctx = limitgroup.New(context.Background(), 2)
 	})
 
 	It("should limit", func() {
@@ -33,10 +34,10 @@ var _ = Describe("Group", func() {
 			time.Sleep(50 * time.Millisecond)
 			return nil
 		})
-		Expect(subject.Done()).NotTo(BeClosed())
+		Expect(ctx.Done()).NotTo(BeClosed())
 		Expect(subject.Wait()).To(Succeed())
 		Expect(time.Since(start)).To(BeNumerically("~", 250*time.Millisecond, 30*time.Millisecond))
-		Expect(subject.Done()).To(BeClosed())
+		Expect(ctx.Done()).To(BeClosed())
 	})
 
 	It("should fail on first error", func() {
@@ -61,7 +62,7 @@ var _ = Describe("Group", func() {
 		subject.Go(increment(0, 7))
 		Expect(subject.Wait()).To(MatchError(err))
 		Expect(time.Since(start)).To(BeNumerically("~", 250*time.Millisecond, 30*time.Millisecond))
-		Expect(subject.Done()).To(BeClosed())
+		Expect(ctx.Done()).To(BeClosed())
 		Expect(atomic.LoadInt64(&inc)).To(Equal(int64(13)))
 	})
 

@@ -14,7 +14,7 @@ type Group struct {
 }
 
 // New inits a new group with a given concurrency (default: 1)
-func New(ctx context.Context, concurrency int) *Group {
+func New(ctx context.Context, concurrency int) (*Group, context.Context) {
 	if concurrency < 1 {
 		concurrency = 1
 	}
@@ -24,13 +24,13 @@ func New(ctx context.Context, concurrency int) *Group {
 		limiter: make(chan struct{}, concurrency),
 		parent:  parent,
 		ctx:     ctx,
-	}
+	}, ctx
 }
 
 // Go runs a function as part of the group. The first function to
 func (g *Group) Go(fn func() error) {
 	select {
-	case <-g.Done():
+	case <-g.ctx.Done():
 		return
 	case g.limiter <- struct{}{}:
 	}
@@ -40,7 +40,7 @@ func (g *Group) Go(fn func() error) {
 
 		select {
 		case <-g.limiter:
-		case <-g.Done():
+		case <-g.ctx.Done():
 		}
 		return err
 	})
@@ -49,9 +49,4 @@ func (g *Group) Go(fn func() error) {
 // Wait waits for all the group functions to exit and returns the first error.
 func (g *Group) Wait() error {
 	return g.parent.Wait()
-}
-
-// Done is triggered when the group is done.
-func (g *Group) Done() <-chan struct{} {
-	return g.ctx.Done()
 }
